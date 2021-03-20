@@ -88,6 +88,7 @@ class MaxLengthCalculator:
     def _calculate_groupref(self, group):
         return self._cache[group]
 
+# from: https://hacknote.jp/archives/39319/
 def __generate_hmac_signature(timestamp, body):
     # Slack App - Basic Information - App Credentials に記載されている
     # Signing Secret
@@ -99,6 +100,7 @@ def __generate_hmac_signature(timestamp, body):
     return hmac.new(secretkey_bytes, message_bytes, hashlib.sha256).hexdigest()
 
 
+# from: https://hacknote.jp/archives/39319/
 def is_valid_request(req):
     if "X-Slack-Request-Timestamp" not in req.headers \
             or "X-Slack-Signature" not in req.headers:
