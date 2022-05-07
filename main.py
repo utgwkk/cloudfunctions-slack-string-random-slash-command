@@ -1,9 +1,7 @@
 import os
-import hmac
-import hashlib
-import time
 import re
-from flask import jsonify
+from flask import jsonify, Request
+from slack_sdk.signature import SignatureVerifier
 from xeger import Xeger
 import sys
 
@@ -88,39 +86,10 @@ class MaxLengthCalculator:
     def _calculate_groupref(self, group):
         return self._cache[group]
 
-# from: https://hacknote.jp/archives/39319/
-def __generate_hmac_signature(timestamp, body):
-    # Slack App - Basic Information - App Credentials に記載されている
-    # Signing Secret
-    secretkey = os.environ['SLACK_API_SIGNING_SECRET']
-    secretkey_bytes = bytes(secretkey, 'UTF-8')
 
-    message = "v0:{}:{}".format(timestamp, body)
-    message_bytes = bytes(message, 'UTF-8')
-    return hmac.new(secretkey_bytes, message_bytes, hashlib.sha256).hexdigest()
-
-
-# from: https://hacknote.jp/archives/39319/
-def is_valid_request(req):
-    if "X-Slack-Request-Timestamp" not in req.headers \
-            or "X-Slack-Signature" not in req.headers:
-        return False
-
-    request_timestamp = int(req.headers["X-Slack-Request-Timestamp"])
-    now_timestamp = int(time.time())
-
-    if abs(request_timestamp - now_timestamp) > (60 * 5):
-        return False
-
-    expected_hash = __generate_hmac_signature(
-        req.headers["X-Slack-Request-Timestamp"],
-        req.get_data(as_text=True)
-    )
-
-    expected = "v0={}".format(expected_hash)
-    actual = req.headers["X-Slack-Signature"]
-
-    return hmac.compare_digest(expected, actual)
+def is_valid_request(req: Request):
+    verifier = SignatureVerifier(os.environ['SLACK_API_SIGNING_SECRET'])
+    return verifier.is_valid_request(req.get_data(), req.headers)
 
 
 def normalize(input_str: str) -> str:
@@ -128,7 +97,7 @@ def normalize(input_str: str) -> str:
 
 xeger = Xeger(limit=10)
 
-def string_random(request):
+def string_random(request: Request):
     global xeger
 
     if not is_valid_request(request):
